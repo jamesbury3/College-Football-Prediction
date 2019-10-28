@@ -27,13 +27,16 @@ names(stats)[7] = "Outcome"
 stats$Location = ifelse(stats$Location == "", "at_school", "at_opponent")
 stats$School = as.character(stats$School)
 stats$Opponent = as.character(stats$Opponent)
+results$Home.Team = as.character(results$Home.Team)
+results$Visitor.Team = as.character(results$Visitor.Team)
 head(results)
 head(stats)
 head(predictions)
 ```
 # Fix incorrectly named teams in stats
 ```{r}
-print(stats %>%
+check_teams = function(v1, v2) {
+  print(stats %>%
   filter(!(School %in% Opponent)) %>%
   group_by(School) %>%
     summarise(
@@ -51,6 +54,9 @@ print(stats %>%
   select(Opponent, n) %>%
   unique()) %>% 
   arrange(desc(n))
+}
+
+check_teams()
 stats$School = ifelse(stats$School == "LSU", "Louisiana State", stats$School)
 stats$School = ifelse(stats$School == "Ole Miss", "Mississippi", stats$School)
 stats$School = ifelse(stats$School == "Pitt", "Pittsburgh", stats$School)
@@ -63,6 +69,61 @@ stats$School = ifelse(stats$School == "UTEP", "Texas-El Paso", stats$School)
 stats$School = ifelse(stats$School == "UTSA", "Texas-San Antonio", stats$School)
 ```
 
+# Fix Team names from Stats to Results
+```{r}
+stats %>%
+  filter(!(School %in% results$Home.Team)) %>%
+  group_by(School) %>%
+  summarise(
+    n=n()
+  ) %>%
+  select(School, n) %>%
+  arrange(desc(n))
+
+results %>%
+  filter(!((Home.Team %in% stats$School) | (Home.Team %in% stats$Opponent))) %>%
+  group_by(Home.Team) %>%
+  summarise(
+    n=n()
+  ) %>%
+  select(Home.Team, n) %>%
+  arrange(desc(n))
+
+update_team = function(bad_name, good_name) {
+  results$Home.Team = ifelse(results$Home.Team == bad_name, good_name, results$Home.Team)
+  results$Visitor.Team = ifelse(results$Visitor.Team == bad_name, good_name, results$Visitor.Team)
+  return(results)
+}
+
+results = update_team("Mississippi St", "Mississippi State")
+results = update_team("LSU", "Louisiana State")
+results = update_team("Miami Florida", "Miami (FL)")
+results = update_team("NC State", "North Carolina State")
+results = update_team("Florida Intl", "Florida International")
+results = update_team("USC", "Southern California")
+results = update_team("TCU", "Texas Christian")
+results = update_team("UL Lafayette", "Lafayette")
+results = update_team("Appalachian St", "Appalachian State")
+results = update_team("SMU", "Southern Methodist")
+results = update_team("Bowling Green", "Bowling Green State")
+results = update_team("BYU", "Brigham Young")
+results = update_team("Miami Ohio", "Miami (OH)")
+results = update_team("Southern Miss", "Southern Mississippi")
+results = update_team("UNLV", "Nevada-Las Vegas")
+results = update_team("UTEP", "Texas-El Paso")
+results = update_team("UTSA", "Texas-San Antonio")
+results = update_team("Middle Tenn St", "Middle Tennessee State")
+results = update_team("Kent", "Kent State")
+results = update_team("Charlotte U", "Charlotte")
+results = update_team("UL Monroe", "Louisiana-Monroe")
+results = update_team("UAB", "Alabama-Birmingham")
+results = update_team("NW Missouri State", "Missouri State")
+results = update_team("Mary Hardin-Baylor", "Baylor")
+results = update_team("Texas A&M Commerce", "Texas A&M")
+results = update_team("McNeese St", "McNeese State")
+results = update_team("Tennessee Chat", "Chattanooga")
+```
+
 
 # Attempt merging in smaller subset
 ```{r}
@@ -73,7 +134,33 @@ stats_sample = stats %>%
   filter(Date == "9/3/2015") %>%
   unique()
 
-merged_home = results_sample %>%
-  inner_join(stats_sample, by = c("Home"))
+head(results_sample)
+head(stats_sample)
+
+merged_home = stats_sample %>%
+  filter(Location == "at_school") %>%
+  inner_join(results_sample, by = c("School" = "Home.Team", "Date" = "Date"))
+
+merged_away = stats_sample %>%
+  filter(Location == "at_opponent") %>%
+  inner_join(results_sample, by = c("School" = "Visitor.Team", "Date" = "Date"))
+```
+
+# Merging to create full dataset
+```{r}
+results_unique = results %>%
+  unique()
+stats_unique = stats %>%
+  unique()
+
+merged_home = stats_unique %>%
+  filter(Location == "at_school") %>%
+  inner_join(results_unique, by = c("School" = "Home.Team", "Opponent" = "Visitor.Team", "Date" = "Date"))
+
+merged_away = stats_unique %>%
+  filter(Location == "at_opponent") %>%
+  inner_join(results_unique, by = c("School" = "Visitor.Team", "Opponent" = "Home.Team", "Date" = "Date"))
+
+df = rbind(merged_home, merged_away)
 ```
 
