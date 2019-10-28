@@ -1,0 +1,78 @@
+---
+title: "EDA"
+author: "James Bury"
+date: "10/27/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(tidyverse)
+```
+
+```{r}
+list.files()
+```
+# Read in datasets
+```{r}
+results = read.csv("GameResults.csv")
+stats = read.csv("GameStats.csv")
+predictions = read.csv("Predictions.csv")
+names(results)[1] = "Date"
+names(stats)[1] = "Rk"
+names(stats)[4] = "GameNumber"
+names(stats)[5] = "Location"
+names(stats)[7] = "Outcome"
+stats$Location = ifelse(stats$Location == "", "at_school", "at_opponent")
+stats$School = as.character(stats$School)
+stats$Opponent = as.character(stats$Opponent)
+head(results)
+head(stats)
+head(predictions)
+```
+# Fix incorrectly named teams in stats
+```{r}
+print(stats %>%
+  filter(!(School %in% Opponent)) %>%
+  group_by(School) %>%
+    summarise(
+      n=n()
+    ) %>%
+  select(School, n) %>%
+  unique())
+
+print(stats %>%
+  filter(!(Opponent %in% School)) %>%
+  group_by(Opponent) %>%
+    summarise(
+      n=n()
+    ) %>%
+  select(Opponent, n) %>%
+  unique())
+stats$School = ifelse(stats$School == "LSU", "Louisiana State", stats$School)
+stats$School = ifelse(stats$School == "Ole Miss", "Mississippi", stats$School)
+stats$School = ifelse(stats$School == "Pitt", "Pittsburgh", stats$School)
+stats$School = ifelse(stats$School == "SMU", "Southern Methodist", stats$School)
+stats$School = ifelse(stats$School == "UAB", "Alabama", stats$School)
+stats$School = ifelse(stats$School == "UCF", "Central Florida", stats$School)
+stats$School = ifelse(stats$School == "UNLV", "Nevada-Las Vegas", stats$School)
+stats$School = ifelse(stats$School == "USC", "Southern California", stats$School)
+stats$School = ifelse(stats$School == "UTEP", "Texas-El Paso", stats$School)
+stats$School = ifelse(stats$School == "UTSA", "Texas-San Antonio", stats$School)
+```
+
+
+# Attempt merging in smaller subset
+```{r}
+results_sample = results %>%
+  filter(Date == "9/3/2015") %>%
+  unique()
+stats_sample = stats %>%
+  filter(Date == "9/3/2015") %>%
+  unique()
+
+merged_home = results_sample %>%
+  inner_join(stats_sample, by = c("Home"))
+```
+
