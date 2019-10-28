@@ -49,12 +49,13 @@ print(stats %>%
       n=n()
     ) %>%
   select(Opponent, n) %>%
-  unique())
+  unique()) %>% 
+  arrange(desc(n))
 stats$School = ifelse(stats$School == "LSU", "Louisiana State", stats$School)
 stats$School = ifelse(stats$School == "Ole Miss", "Mississippi", stats$School)
 stats$School = ifelse(stats$School == "Pitt", "Pittsburgh", stats$School)
 stats$School = ifelse(stats$School == "SMU", "Southern Methodist", stats$School)
-stats$School = ifelse(stats$School == "UAB", "Alabama", stats$School)
+stats$School = ifelse(stats$School == "UAB", "Alabama-Birmingham", stats$School)
 stats$School = ifelse(stats$School == "UCF", "Central Florida", stats$School)
 stats$School = ifelse(stats$School == "UNLV", "Nevada-Las Vegas", stats$School)
 stats$School = ifelse(stats$School == "USC", "Southern California", stats$School)
