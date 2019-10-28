@@ -11,50 +11,53 @@ library(dplyr)
 library(tidyverse)
 ```
 
-```{r}
-list.files()
-```
-# Read in datasets
+# Read in datasets and fix columns
 ```{r}
 results = read.csv("GameResults.csv")
 stats = read.csv("GameStats.csv")
 predictions = read.csv("Predictions.csv")
+
 names(results)[1] = "Date"
 names(stats)[1] = "Rk"
 names(stats)[4] = "GameNumber"
 names(stats)[5] = "Location"
 names(stats)[7] = "Outcome"
+
 stats$Location = ifelse(stats$Location == "", "at_school", "at_opponent")
+
 stats$School = as.character(stats$School)
 stats$Opponent = as.character(stats$Opponent)
 results$Home.Team = as.character(results$Home.Team)
 results$Visitor.Team = as.character(results$Visitor.Team)
+results$Date = as.Date(results$Date, "%m/%d/%Y")
+stats$Date = as.Date(stats$Date, "%m/%d/%Y")
+
 head(results)
 head(stats)
 head(predictions)
 ```
+
 # Fix incorrectly named teams in stats
 ```{r}
-check_teams = function(v1, v2) {
-  print(stats %>%
-  filter(!(School %in% Opponent)) %>%
-  group_by(School) %>%
-    summarise(
-      n=n()
-    ) %>%
-  select(School, n) %>%
-  unique())
+print(stats %>%
+filter(!(School %in% Opponent)) %>%
+group_by(School) %>%
+  summarise(
+    n=n()
+  ) %>%
+select(School, n) %>%
+unique())
 
 print(stats %>%
-  filter(!(Opponent %in% School)) %>%
-  group_by(Opponent) %>%
-    summarise(
-      n=n()
-    ) %>%
-  select(Opponent, n) %>%
-  unique()) %>% 
-  arrange(desc(n))
-}
+filter(!(Opponent %in% School)) %>%
+group_by(Opponent) %>%
+  summarise(
+    n=n()
+  ) %>%
+select(Opponent, n) %>%
+unique()) %>% 
+arrange(desc(n))
+
 
 check_teams()
 stats$School = ifelse(stats$School == "LSU", "Louisiana State", stats$School)
@@ -124,34 +127,10 @@ results = update_team("McNeese St", "McNeese State")
 results = update_team("Tennessee Chat", "Chattanooga")
 ```
 
-
-# Attempt merging in smaller subset
-```{r}
-results_sample = results %>%
-  filter(Date == "9/3/2015") %>%
-  unique()
-stats_sample = stats %>%
-  filter(Date == "9/3/2015") %>%
-  unique()
-
-head(results_sample)
-head(stats_sample)
-
-merged_home = stats_sample %>%
-  filter(Location == "at_school") %>%
-  inner_join(results_sample, by = c("School" = "Home.Team", "Date" = "Date"))
-
-merged_away = stats_sample %>%
-  filter(Location == "at_opponent") %>%
-  inner_join(results_sample, by = c("School" = "Visitor.Team", "Date" = "Date"))
-```
-
 # Merging to create full dataset
 ```{r}
-results_unique = results %>%
-  unique()
-stats_unique = stats %>%
-  unique()
+results_unique = unique(results)
+stats_unique = unique(stats)
 
 merged_home = stats_unique %>%
   filter(Location == "at_school") %>%
@@ -162,5 +141,10 @@ merged_away = stats_unique %>%
   inner_join(results_unique, by = c("School" = "Visitor.Team", "Opponent" = "Home.Team", "Date" = "Date"))
 
 df = rbind(merged_home, merged_away)
+```
+
+# Create Final CSV
+```{r}
+write.csv(file = "game_data.csv", df)
 ```
 
