@@ -59,7 +59,6 @@ unique()) %>%
 arrange(desc(n))
 
 
-check_teams()
 stats$School = ifelse(stats$School == "LSU", "Louisiana State", stats$School)
 stats$School = ifelse(stats$School == "Ole Miss", "Mississippi", stats$School)
 stats$School = ifelse(stats$School == "Pitt", "Pittsburgh", stats$School)
