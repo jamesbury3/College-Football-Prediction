@@ -142,8 +142,43 @@ merged_away = stats_unique %>%
 df = rbind(merged_home, merged_away)
 ```
 
+# Remove rows with N/A
+```{r}
+df2 = na.omit(df)
+```
+
+# Organize Columns
+```{r}
+df3 = df2
+df3$Location.y = ifelse(df3$Location.y == "Visitor", 0, 1)
+df3$Location.x = ifelse(df3$Location.x == "at_school", 1, 0)
+df3$Score = ifelse(df3$Location.x == 1, df3$Home.Score, df3$Visitor.Score)
+df3$OppScore = ifelse(df3$Location.x == 1, df3$Visitor.Score, df3$Home.Score)
+
+df4 = df3 %>%
+  select(-Result,
+         -Rk,
+         -Home.Score,
+         -Visitor.Score) %>%
+  rename(NeutralLocation = Location.y,
+         AtHome = Location.x) %>%
+  select(School,
+         Opponent,
+         Date,
+         Season,
+         AtHome,
+         NeutralLocation,
+         Score,
+         OppScore,
+         Total,
+         Outcome,
+         Spread,
+         Season.Type,
+         everything())
+```
+
 # Create Final CSV
 ```{r}
-write.csv(file = "game_data.csv", df)
+write.csv(file = "game_data.csv", df4)
 ```
 
