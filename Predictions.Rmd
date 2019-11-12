@@ -1,0 +1,63 @@
+---
+title: "Predictions"
+author: "James Bury"
+date: "11/12/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(randomForest)
+library(glmnet)
+```
+
+```{r}
+df = read.csv("DF_FINAL_CONFERENCES_DIFFS.csv")
+```
+
+```{r}
+head(df)
+```
+
+# Make prediction set
+```{r}
+df.prediction = df %>%
+  select(
+    -School,
+    -Opponent,
+    -Date,
+    -Season,
+    -Score,
+    -OppScore,
+    -Total,
+    -Spread,
+    -SeasonRanking,
+    -OppSeasonRanking,
+    -Team,
+    -Nickname,
+    -City,
+    -State,
+    -Conference,
+    -OppNickname,
+    -OppCity,
+    -OppState,
+    -OppConference)
+
+df.prediction$Outcome = ifelse(df.prediction$Outcome == "W", 1, 0)
+df.prediction$Season.Type = ifelse(df.prediction$Season.Type == "Regular", 1, 0)
+
+train = sample_n(df.prediction, size = 0.7 * nrow(df.prediction), replace = FALSE)
+test = anti_join(df.prediction, train)
+```
+
+# Logistic Regression
+```{r}
+set.seed(1234)
+model = glm(Outcome~., data = train, family = "binomial")
+predictions = predict.glm(model, test, type = "response")
+predictions = ifelse(predictions >= 0.5, 1, 0)
+sum(ifelse(predictions == test$Outcome, 1, 0)) / nrow(test)
+```
+
+
