@@ -20,8 +20,12 @@ df = read.csv("DF_FINAL_CONFERENCES_DIFFS.csv")
 head(df)
 ```
 
+# Predicting Result
+
 # Make prediction set
 ```{r}
+set.seed(1234)
+
 df.prediction = df %>%
   select(
     -School,
@@ -55,9 +59,131 @@ test = anti_join(df.prediction, train)
 ```{r}
 set.seed(1234)
 model = glm(Outcome~., data = train, family = "binomial")
-predictions = predict.glm(model, test, type = "response")
+predictions = suppressWarnings(predict.glm(model, test, type = "response"))
 predictions = ifelse(predictions >= 0.5, 1, 0)
-sum(ifelse(predictions == test$Outcome, 1, 0)) / nrow(test)
+paste("Logistic Regression Accuracy on 30% test",sum(ifelse(predictions == test$Outcome, 1, 0)) / nrow(test))
 ```
 
+# Predicting Spread
+
+# Make prediction set
+```{r}
+set.seed(1234)
+
+df.prediction = df %>%
+  select(
+    -School,
+    -Opponent,
+    -Date,
+    -Season,
+    -Score,
+    -OppScore,
+    -Total,
+    -Outcome,
+    -SeasonRanking,
+    -OppSeasonRanking,
+    -Team,
+    -Nickname,
+    -City,
+    -State,
+    -Conference,
+    -OppNickname,
+    -OppCity,
+    -OppState,
+    -OppConference)
+
+df.prediction$Season.Type = ifelse(df.prediction$Season.Type == "Regular", 1, 0)
+
+train = sample_n(df.prediction, size = 0.7 * nrow(df.prediction), replace = FALSE)
+test = anti_join(df.prediction, train)
+```
+
+# Linear Regression
+```{r}
+set.seed(1234)
+model = lm(Spread~., data = train)
+summary(model)
+
+predictions = predict.lm(model, newdata = test, type = "response")
+MAE = sum(abs(test$Spread - predictions)) / nrow(test)
+MAE
+mean(test$Spread)
+hist(test$Spread)
+```
+
+# Lasso Regression
+```{r}
+train.matrix = model.matrix(Spread~., data = train)
+test.matrix = model.matrix(Spread~., data = test)
+set.seed(1234)
+
+model = cv.glmnet(train.matrix, train$Spread, family = "gaussian", alpha = 1, nfolds = 5)
+coef(model)
+
+predictions = predict.cv.glmnet(model, newx = test.matrix, type = "response")
+MAE = sum(abs(test$Spread - predictions)) / nrow(test)
+MAE
+mean(test$Spread)
+```
+
+
+# Predicting Total
+
+# Make prediction set
+```{r}
+set.seed(1234)
+
+df.prediction = df %>%
+  select(
+    -School,
+    -Opponent,
+    -Date,
+    -Season,
+    -Score,
+    -OppScore,
+    -Outcome,
+    -Spread,
+    -SeasonRanking,
+    -OppSeasonRanking,
+    -Team,
+    -Nickname,
+    -City,
+    -State,
+    -Conference,
+    -OppNickname,
+    -OppCity,
+    -OppState,
+    -OppConference)
+
+df.prediction$Season.Type = ifelse(df.prediction$Season.Type == "Regular", 1, 0)
+
+train = sample_n(df.prediction, size = 0.7 * nrow(df.prediction), replace = FALSE)
+test = anti_join(df.prediction, train)
+```
+
+# Linear Model
+```{r}
+set.seed(1234)
+model = lm(Total~., data = train)
+summary(model)
+
+predictions = predict.lm(model, newdata = test, type = "response")
+MAE = sum(abs(test$Total - predictions)) / nrow(test)
+MAE
+```
+
+# Lasso Regression
+```{r}
+train.matrix = model.matrix(Total~., data = train)
+test.matrix = model.matrix(Total~., data = test)
+set.seed(1234)
+
+model = cv.glmnet(train.matrix, train$Total, family = "gaussian", alpha = 0, nfolds = 5)
+coef(model)
+
+predictions = predict.cv.glmnet(model, newx = test.matrix, type = "response")
+MAE = sum(abs(test$Total - predictions)) / nrow(test)
+MAE
+mean(test$Total)
+```
 
