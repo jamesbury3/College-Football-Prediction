@@ -26,42 +26,62 @@ head(df)
 ```{r}
 set.seed(1234)
 
-df.prediction = df %>%
-  select(
-    -School,
-    -Opponent,
-    -Date,
-    -Season,
-    -Score,
-    -OppScore,
-    -Total,
-    -Spread,
-    -SeasonRanking,
-    -OppSeasonRanking,
-    -Team,
-    -Nickname,
-    -City,
-    -State,
-    -Conference,
-    -OppNickname,
-    -OppCity,
-    -OppState,
-    -OppConference)
+train = list()
+test = list()
+dfs = list()
 
-df.prediction$Outcome = ifelse(df.prediction$Outcome == "W", 1, 0)
-df.prediction$Season.Type = ifelse(df.prediction$Season.Type == "Regular", 1, 0)
+for(l in 1:length(levels(df$Conference))) {
+  df.prediction = df %>%
+    filter(Conference == levels(df$Conference)[l]) %>%
+    select(
+      -School,
+      -Opponent,
+      -Date,
+      -Season,
+      -Score,
+      -OppScore,
+      -Total,
+      -Spread,
+      -Conference,
+      -SeasonRanking,
+      -OppSeasonRanking,
+      -Team,
+      -Nickname,
+      -City,
+      -State,
+      -OppNickname,
+      -OppCity,
+      -OppState,
+      -OppConference)
 
-train = sample_n(df.prediction, size = 0.7 * nrow(df.prediction), replace = FALSE)
-test = anti_join(df.prediction, train)
+  df.prediction$Outcome = ifelse(df.prediction$Outcome == "W", 1, 0)
+  df.prediction$Season.Type = ifelse(df.prediction$Season.Type == "Regular", 1, 0)
+  
+  curr_train = sample_n(df.prediction, size = 0.7 * nrow(df.prediction), replace = FALSE)
+  train[[l]] = data.frame(curr_train)
+  test[[l]] = data.frame(anti_join(df.prediction, curr_train))
+}
+
+
 ```
 
 # Logistic Regression
 ```{r}
 set.seed(1234)
-model = glm(Outcome~., data = train, family = "binomial")
-predictions = suppressWarnings(predict.glm(model, test, type = "response"))
-predictions = ifelse(predictions >= 0.5, 1, 0)
-paste("Logistic Regression Accuracy on 30% test",sum(ifelse(predictions == test$Outcome, 1, 0)) / nrow(test))
+
+accuracies = data.frame(Conference="", Accuracy=0)
+for(l in 1:length(train)) {
+  if(length(test[[l]]) > 20) {
+    model = glm(Outcome~., data = train[[l]], family = "binomial")
+    predictions = suppressWarnings(predict.glm(model, test[[l]], type = "response"))
+    predictions = ifelse(predictions >= 0.5, 1, 0)
+    print(paste("Logistic Regression Accuracy on 30% test",sum(ifelse(predictions == test[[l]]$Outcome, 1, 0)) / nrow(test[[l]])))
+    accuracies = rbind(accuracies, data.frame(Conference=levels(df$Conference)[l], Accuracy=sum(ifelse(predictions == test[[l]]$Outcome, 1, 0)) / nrow(test[[l]])))
+  }
+}
+accuracies = accuracies[-1,]
+accuracies
+
 ```
 
 # Predicting Spread
