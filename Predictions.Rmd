@@ -20,6 +20,8 @@ df = read.csv("DF_FINAL_CONFERENCES_DIFFS.csv")
 head(df)
 ```
 
+### NOTES: did not include l = 6 of the conferences because FBS Independent does not have enough games
+
 # Predicting Result
 
 # Make prediction set
@@ -176,57 +178,82 @@ write.csv(file = 'lasso_spread.csv', accuracies)
 ```{r}
 set.seed(1234)
 
-df.prediction = df %>%
-  select(
-    -School,
-    -Opponent,
-    -Date,
-    -Season,
-    -Score,
-    -OppScore,
-    -Outcome,
-    -Spread,
-    -SeasonRanking,
-    -OppSeasonRanking,
-    -Team,
-    -Nickname,
-    -City,
-    -State,
-    -Conference,
-    -OppNickname,
-    -OppCity,
-    -OppState,
-    -OppConference)
+train = list()
+test = list()
+dfs = list()
 
-df.prediction$Season.Type = ifelse(df.prediction$Season.Type == "Regular", 1, 0)
+for(l in 1:length(levels(df$Conference))) {
 
-train = sample_n(df.prediction, size = 0.7 * nrow(df.prediction), replace = FALSE)
-test = anti_join(df.prediction, train)
+  df.prediction = df %>%
+    filter(Conference == levels(df$Conference)[l]) %>%
+    select(
+      -School,
+      -Opponent,
+      -Date,
+      -Season,
+      -Score,
+      -OppScore,
+      -Outcome,
+      -Spread,
+      -SeasonRanking,
+      -OppSeasonRanking,
+      -Team,
+      -Nickname,
+      -City,
+      -State,
+      -Conference,
+      -OppNickname,
+      -OppCity,
+      -OppState,
+      -OppConference)
+  
+  df.prediction$Season.Type = ifelse(df.prediction$Season.Type == "Regular", 1, 0)
+
+  curr_train = sample_n(df.prediction, size = 0.7 * nrow(df.prediction), replace = FALSE)
+  train[[l]] = data.frame(curr_train)
+  test[[l]] = data.frame(anti_join(df.prediction, curr_train))
+
+}
 ```
 
 # Linear Model
 ```{r}
 set.seed(1234)
-model = lm(Total~., data = train)
-summary(model)
 
-predictions = predict.lm(model, newdata = test, type = "response")
-MAE = sum(abs(test$Total - predictions)) / nrow(test)
-MAE
+accuracies = data.frame(Conference="", MAE=0)
+
+for(l in 1:length(train)) {
+  if(length(test[[l]]) > 20) {
+    model = lm(Total~., data = train[[l]])
+    predictions = predict.lm(model, newdata = test[[l]], type = "response")
+    MAE = sum(abs(test[[l]]$Total - predictions)) / nrow(test[[l]])
+    print(paste("Linear Regression MAE on 30% test",MAE))
+    accuracies = rbind(accuracies, data.frame(Conference=levels(df$Conference)[l], MAE=MAE))
+  }
+}
+accuracies = accuracies[-1,]
+write.csv(file = 'linear_total.csv', accuracies)
 ```
 
 # Lasso Regression
 ```{r}
-train.matrix = model.matrix(Total~., data = train)
-test.matrix = model.matrix(Total~., data = test)
 set.seed(1234)
 
-model = cv.glmnet(train.matrix, train$Total, family = "gaussian", alpha = 0, nfolds = 5)
-coef(model)
-
-predictions = predict.cv.glmnet(model, newx = test.matrix, type = "response")
-MAE = sum(abs(test$Total - predictions)) / nrow(test)
-MAE
-mean(test$Total)
+accuracies = data.frame(Conference="", MAE=0)
+for(l in 1:length(train)) {
+  if(l != 6) {
+    train.matrix = model.matrix(Total~., data = train[[l]])
+    test.matrix = model.matrix(Total~., data = test[[l]])
+    model = cv.glmnet(train.matrix, train[[l]]$Total, family = "gaussian", alpha = 0, nfolds = 5)
+    predictions = predict.cv.glmnet(model, newx = test.matrix, type = "response")
+    MAE = sum(abs(test[[l]]$Total - predictions)) / nrow(test[[l]])
+    MAE
+    print(paste("Lasso Regression MAE on 30% test",MAE))
+    accuracies = rbind(accuracies, data.frame(Conference=levels(df$Conference)[l], MAE=MAE))
+  }
+}
+accuracies = accuracies[-1,]
+accuracies
+write.csv(file = 'lasso_total.csv', accuracies)
 ```
 
