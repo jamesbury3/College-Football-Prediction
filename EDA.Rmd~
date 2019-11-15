@@ -59,6 +59,7 @@ unique()) %>%
 arrange(desc(n))
 
 
+check_teams()
 stats$School = ifelse(stats$School == "LSU", "Louisiana State", stats$School)
 stats$School = ifelse(stats$School == "Ole Miss", "Mississippi", stats$School)
 stats$School = ifelse(stats$School == "Pitt", "Pittsburgh", stats$School)
@@ -97,6 +98,7 @@ update_team = function(bad_name, good_name) {
   return(results)
 }
 
+
 results = update_team("Mississippi St", "Mississippi State")
 results = update_team("LSU", "Louisiana State")
 results = update_team("Miami Florida", "Miami (FL)")
@@ -126,14 +128,6 @@ results = update_team("McNeese St", "McNeese State")
 results = update_team("Tennessee Chat", "Chattanooga")
 ```
 
-# Get Team Year Rankings
-```{r}
-rankings = unique(stats) %>%
-  select(Rk, School, Date) %>%
-  mutate(Year=as.factor(paste(substring(Date, 1,4),"-",(as.numeric(substring(Date, 1,4)) + 1 - 2000), sep=""))) %>%
-  select(-Date)
-```
-
 # Merging to create full dataset
 ```{r}
 results_unique = unique(results)
@@ -150,57 +144,8 @@ merged_away = stats_unique %>%
 df = rbind(merged_home, merged_away)
 ```
 
-# Remove rows with N/A
-```{r}
-df2 = na.omit(df)
-```
-
-# Organize Columns
-```{r}
-df3 = df2
-df3$Location.y = ifelse(df3$Location.y == "Visitor", 0, 1)
-df3$Location.x = ifelse(df3$Location.x == "at_school", 1, 0)
-df3$Score = ifelse(df3$Location.x == 1, df3$Home.Score, df3$Visitor.Score)
-df3$OppScore = ifelse(df3$Location.x == 1, df3$Visitor.Score, df3$Home.Score)
-
-df4 = df3 %>%
-  select(-Result,
-         -Home.Score,
-         -Visitor.Score,
-         -Rk) %>%
-  rename(NeutralLocation = Location.y,
-         AtHome = Location.x) %>%
-  select(School,
-         Opponent,
-         Date,
-         Season,
-         AtHome,
-         NeutralLocation,
-         Score,
-         OppScore,
-         Total,
-         Outcome,
-         Spread,
-         Season.Type,
-         everything())
-
-df4_school_rankings = df4 %>%
-  inner_join(rankings, by = c("School" = "School", "Season" = "Year")) %>%
-  rename(SchoolRank = Rk) %>%
-  select(School, Season, SchoolRank)
-df4_opp_rankings = df4 %>%
-  inner_join(rankings, by = c("Opponent" = "School", "Season" = "Year")) %>%
-  rename(OppRank = Rk) %>%
-  select(Opponent, Season, OppRank)
-
-df5 = df4 %>%
-  inner_join(df4_school_rankings, by = c("School" = "School", "Season" = "Season")) %>%
-  unique()
-```
-
 # Create Final CSV
 ```{r}
-write.csv(file = "game_data.csv", df4)
+write.csv(file = "game_data.csv", df)
 ```
-
 

@@ -1,0 +1,44 @@
+---
+title: "Best Subset Selection"
+author: "James Bury"
+date: "11/14/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(leaps)
+library(dplyr)
+library(randomForest)
+```
+
+# Result
+```{r}
+df = read.csv("df_result.csv") %>%
+  select(-GameNumber)
+df$id = 1:nrow(df)
+```
+
+```{r}
+set.seed(100)
+train = sample_n(df, size = 0.7*nrow(df), replace = FALSE)
+test = anti_join(df, train, by = c("id" = "id"))
+
+rf = randomForest(select(train, -Outcome, -id), y = as.factor(train$Outcome), xtest = select(test, -Outcome, -id), ytest = as.factor(test$Outcome), keep.forest = TRUE)
+rf
+importance(rf)
+# getTree(rf)
+```
+
+
+
+# Spread
+```{r}
+df = read.csv('df_spread.csv')
+```
+
+```{r}
+a = regsubsets(Spread~., data = df %>% select(-Conference))
+summary(a)
+```
+

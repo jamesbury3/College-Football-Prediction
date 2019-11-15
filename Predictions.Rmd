@@ -14,6 +14,15 @@ library(glmnet)
 
 ```{r}
 df = read.csv("DF_FINAL_CONFERENCES_DIFFS.csv")
+conference_games = data.frame(Conference="", Games=0)
+for(l in levels(df$Conference)) {
+  print(l)
+  print(nrow(df %>% filter(Conference == l)))
+  conference_games = rbind(conference_games, data.frame(Conference=l, Games=nrow(df %>% filter(Conference == l))))
+}
+conference_games = conference_games[-1,]
+conference_games
+write.csv(file = 'games_per_conference.csv', conference_games)
 ```
 
 ```{r}
@@ -90,6 +99,7 @@ accuracies
 
 # Make prediction set
 ```{r}
+df = read.csv('df_spread.csv')
 set.seed(1234)
 
 train = list()
@@ -99,29 +109,7 @@ dfs = list()
 for(l in 1:length(levels(df$Conference))) {
 
   df.prediction = df %>%
-    filter(Conference == levels(df$Conference)[l]) %>%
-    select(
-      -School,
-      -Opponent,
-      -Date,
-      -Season,
-      -Score,
-      -OppScore,
-      -Total,
-      -Outcome,
-      -SeasonRanking,
-      -OppSeasonRanking,
-      -Team,
-      -Nickname,
-      -City,
-      -State,
-      -Conference,
-      -OppNickname,
-      -OppCity,
-      -OppState,
-      -OppConference)
-
-  df.prediction$Season.Type = ifelse(df.prediction$Season.Type == "Regular", 1, 0)
+    filter(Conference == levels(df$Conference)[l])
 
   curr_train = sample_n(df.prediction, size = 0.7 * nrow(df.prediction), replace = FALSE)
   train[[l]] = data.frame(curr_train)
@@ -129,6 +117,26 @@ for(l in 1:length(levels(df$Conference))) {
 
 }
 ```
+
+# Random Forest Regression
+```{r}
+set.seed(1234)
+
+
+for(l in 1:length(train)) {
+  if(length(test[[l]]) > 20) {
+    l = 1
+    curr_train = train[[l]]
+    curr_test = test[[l]]
+    rf = randomForest(select(curr_train, -Spread), y = as.factor(curr_train$Spread), xtest = select(curr_test, -Spread), ytest = as.factor(curr_test$Outcome), keep.forest = TRUE)
+    rf
+    print("Random Forest Regression Accuracy on 30% test")
+    importance(rf)
+  }
+}
+
+```
+
 
 # Linear Regression
 ```{r}
@@ -138,6 +146,7 @@ accuracies = data.frame(Conference="", MAE=0)
 for(l in 1:length(train)) {
   if(length(test[[l]]) > 20) {
     model = lm(Spread~., data = train[[l]])
+    print(summary(model))
     predictions = predict.lm(model, newdata = test[[l]], type = "response")
     MAE = sum(abs(test[[l]]$Spread - predictions)) / nrow(test[[l]])
     print(paste("Linear Regression MAE on 30% test",MAE))
@@ -225,6 +234,7 @@ accuracies = data.frame(Conference="", MAE=0)
 for(l in 1:length(train)) {
   if(length(test[[l]]) > 20) {
     model = lm(Total~., data = train[[l]])
+    print(summary(model))
     predictions = predict.lm(model, newdata = test[[l]], type = "response")
     MAE = sum(abs(test[[l]]$Total - predictions)) / nrow(test[[l]])
     print(paste("Linear Regression MAE on 30% test",MAE))
