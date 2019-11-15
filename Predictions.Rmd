@@ -178,6 +178,7 @@ for(l in 1:length(train)) {
 accuracies = accuracies[-1,]
 accuracies
 write.csv(file = 'lasso_spread.csv', accuracies)
+
 ```
 
 
